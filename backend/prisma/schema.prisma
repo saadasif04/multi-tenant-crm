@@ -4,5 +4,96 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+/* =========================
+   ORGANIZATION
+========================= */
+model Organization {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  users     User[]
+  customers Customer[]
+}
+
+/* =========================
+   USER
+========================= */
+model User {
+  id             Int    @id @default(autoincrement())
+  name           String
+  email          String @unique
+  password       String
+  role           String
+  organizationId Int
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  createdCustomers  Customer[] @relation("CreatedCustomers")
+  assignedCustomers Customer[] @relation("AssignedCustomers")
+
+  notes        Note[]
+  activityLogs ActivityLog[]
+}
+
+/* =========================
+   CUSTOMER
+========================= */
+model Customer {
+  id             Int    @id @default(autoincrement())
+  name           String
+  email          String
+  phone          String?
+
+  organizationId Int
+
+  createdById  Int
+  assignedToId Int
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  createdBy User @relation("CreatedCustomers", fields: [createdById], references: [id])
+  assignedTo User @relation("AssignedCustomers", fields: [assignedToId], references: [id])
+
+  notes        Note[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+/* =========================
+   NOTE
+========================= */
+model Note {
+  id      Int    @id @default(autoincrement())
+  content String
+
+  customerId Int
+  organizationId Int
+  createdById Int
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+/* =========================
+   ACTIVITY LOG
+========================= */
+model ActivityLog {
+  id        Int    @id @default(autoincrement())
+
+  entityType String
+  entityId   Int
+  action     String
+
+  organizationId Int
+  performedById  Int
+
+  performedBy User @relation(fields: [performedById], references: [id])
+
+  createdAt DateTime @default(now())
 }
