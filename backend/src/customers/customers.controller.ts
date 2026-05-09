@@ -13,16 +13,7 @@ import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomerDto } from './dto/query-customer.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
-import { Request } from 'express';
-
-interface AuthRequest extends Request {
-  user: {
-    id: number;
-    email: string;
-    role: string;
-    organizationId: number;
-  };
-}
+import type { AuthenticatedRequest } from '../shared/types/auth.types';
 
 @UseGuards(JwtAuthGuard)
 @Controller('customers')
@@ -30,19 +21,19 @@ export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
-  create(@Req() req: AuthRequest, @Body() dto: CreateCustomerDto) {
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateCustomerDto) {
     return this.customersService.create(req.user, dto);
   }
 
   @Get()
-  findAll(@Req() req: AuthRequest, @Query() query: QueryCustomerDto) {
+  findAll(@Req() req: AuthenticatedRequest, @Query() query: QueryCustomerDto) {
     return this.customersService.findAll(req.user, query);
   }
 
   // UPDATE
   @Patch(':id')
   update(
-    @Req() req: AuthRequest,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: CreateCustomerDto,
   ) {
@@ -51,13 +42,13 @@ export class CustomersController {
 
   // SOFT DELETE
   @Patch(':id/delete')
-  remove(@Req() req: AuthRequest, @Param('id') id: string) {
+  remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.customersService.remove(req.user, Number(id));
   }
 
   // RESTORE
   @Patch(':id/restore')
-  restore(@Req() req: AuthRequest, @Param('id') id: string) {
+  restore(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.customersService.restore(req.user, Number(id));
   }
 }

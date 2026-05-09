@@ -2,13 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomerDto } from './dto/query-customer.dto';
-
-type AuthUser = {
-  id: number;
-  email: string;
-  role: string;
-  organizationId: number;
-};
+import { AuthUser } from '../shared/types/auth.types';
 
 @Injectable()
 export class CustomersService {
