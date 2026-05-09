@@ -3,14 +3,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomerDto } from './dto/query-customer.dto';
 import { AuthUser } from '../shared/types/auth.types';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { ActivityAction } from '../activity-logs/types/activity-logs.types';
 
 @Injectable()
 export class CustomersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private activityLogsService: ActivityLogsService,
+  ) {}
 
   // CREATE
   async create(user: AuthUser, dto: CreateCustomerDto) {
-    return this.prisma.customer.create({
+    const customer = await this.prisma.customer.create({
       data: {
         name: dto.name,
         email: dto.email,
@@ -20,6 +25,15 @@ export class CustomersService {
         createdById: user.id,
       },
     });
+
+    await this.activityLogsService.log({
+      user,
+      entityType: 'CUSTOMER',
+      entityId: customer.id,
+      action: ActivityAction.CREATED,
+    });
+
+    return customer;
   }
 
   // GET ALL (pagination + search + soft delete filter)
@@ -47,7 +61,7 @@ export class CustomersService {
 
   // UPDATE
   async update(user: AuthUser, id: number, dto: CreateCustomerDto) {
-    return this.prisma.customer.update({
+    const customer = await this.prisma.customer.update({
       where: {
         id,
         organizationId: user.organizationId,
@@ -58,11 +72,20 @@ export class CustomersService {
         phone: dto.phone,
       },
     });
+
+    await this.activityLogsService.log({
+      user,
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: ActivityAction.UPDATED,
+    });
+
+    return customer;
   }
 
   // SOFT DELETE
   async remove(user: AuthUser, id: number) {
-    return this.prisma.customer.update({
+    const customer = await this.prisma.customer.update({
       where: {
         id,
         organizationId: user.organizationId,
@@ -71,11 +94,20 @@ export class CustomersService {
         deletedAt: new Date(),
       },
     });
+
+    await this.activityLogsService.log({
+      user,
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: ActivityAction.DELETED,
+    });
+
+    return customer;
   }
 
   // RESTORE
   async restore(user: AuthUser, id: number) {
-    return this.prisma.customer.update({
+    const customer = await this.prisma.customer.update({
       where: {
         id,
         organizationId: user.organizationId,
@@ -84,5 +116,14 @@ export class CustomersService {
         deletedAt: null,
       },
     });
+
+    await this.activityLogsService.log({
+      user,
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: ActivityAction.RESTORED,
+    });
+
+    return customer;
   }
 }

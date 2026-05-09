@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CustomersModule } from './customers/customers.module';
 import { NotesModule } from './notes/notes.module';
+import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { NotesModule } from './notes/notes.module';
     AuthModule,
     CustomersModule,
     NotesModule,
+    ActivityLogsModule,
     PrismaModule,
   ],
   controllers: [AppController],
