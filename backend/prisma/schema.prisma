@@ -50,12 +50,12 @@ model Customer {
   organizationId Int
 
   createdById  Int
-  assignedToId Int
+  assignedToId Int?
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
   createdBy User @relation("CreatedCustomers", fields: [createdById], references: [id])
-  assignedTo User @relation("AssignedCustomers", fields: [assignedToId], references: [id])
+  assignedTo User? @relation("AssignedCustomers", fields: [assignedToId], references: [id])
 
   notes        Note[]
 

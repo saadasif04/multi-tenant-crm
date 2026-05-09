@@ -51,4 +51,17 @@ export class CustomersController {
   restore(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.customersService.restore(req.user, Number(id));
   }
+
+  @Patch(':id/assign/:userId')
+  assign(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.customersService.assignCustomer(
+      req.user,
+      Number(id),
+      Number(userId),
+    );
+  }
 }

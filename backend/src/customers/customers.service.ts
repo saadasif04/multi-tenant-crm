@@ -21,7 +21,7 @@ export class CustomersService {
         email: dto.email,
         phone: dto.phone,
         organizationId: user.organizationId,
-        assignedToId: user.id,
+        assignedToId: null,
         createdById: user.id,
       },
     });
@@ -125,5 +125,50 @@ export class CustomersService {
     });
 
     return customer;
+  }
+
+  async assignCustomer(
+    user: AuthUser,
+    customerId: number,
+    assignedToId: number,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Count active customers for target user
+      const activeCount = await tx.customer.count({
+        where: {
+          assignedToId,
+          deletedAt: null,
+        },
+      });
+
+      // 2. Enforce limit
+      if (activeCount >= 5) {
+        throw new Error('User already has maximum 5 active customers');
+      }
+
+      // 3. Update assignment
+      const customer = await tx.customer.update({
+        where: {
+          id: customerId,
+          organizationId: user.organizationId,
+        },
+        data: {
+          assignedToId,
+        },
+      });
+
+      // 4. Log activity
+      await tx.activityLog.create({
+        data: {
+          entityType: 'CUSTOMER',
+          entityId: customerId,
+          action: ActivityAction.ASSIGNED,
+          organizationId: user.organizationId,
+          performedById: user.id,
+        },
+      });
+
+      return customer;
+    });
   }
 }
