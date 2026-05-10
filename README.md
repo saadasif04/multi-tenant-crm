@@ -1,89 +1,68 @@
-# 🧩 Multi-Tenant CRM System
+# Multi-Tenant CRM System
 
-A minimal **multi-tenant CRM system** built with:
+A minimal multi-tenant CRM system focused on **architecture, isolation, concurrency safety, and production-grade thinking** over feature complexity.
 
-- NestJS (Backend)
-- Prisma ORM
-- PostgreSQL (Neon)
-- Next.js (Frontend)
-- TypeScript (strict)
+## Tech Stack
 
-The system focuses on **architecture, isolation, concurrency safety, and production thinking** over feature complexity.
+| Layer | Technology |
+|-------|-----------|
+| Backend | NestJS |
+| ORM | Prisma |
+| Database | PostgreSQL (Neon) |
+| Frontend | Next.js |
+| Language | TypeScript (strict) |
 
 ---
 
-# 🏗️ Architecture Decisions
+## Architecture
 
-The system follows a **layered architecture**:
+The system follows a layered architecture with clear separation of concerns.
 
-### Backend Structure
-
+```
 src/
 ├── auth/
 ├── customers/
 ├── users/
 ├── activity-logs/
 ├── prisma/
-├── shared/
+└── shared/
+```
 
+**Key design principles:**
 
-### Key Design Principles
-- Controller → Service separation
-- Business logic lives in services
-- Prisma handles DB access layer
-- DTOs enforce validation
+- Controller → Service separation; business logic lives in services
+- Prisma handles the DB access layer
+- DTOs enforce input validation
 - JWT-based authentication
-
-### Why this architecture?
-- Keeps code modular and testable
-- Easy to scale per feature module
-- Clean separation of concerns
-- Suitable for production NestJS apps
 
 ---
 
-# 🏢 Multi-Tenancy Isolation
+## Multi-Tenancy
 
-## Strategy: Row-Level Isolation
+**Strategy: Row-Level Isolation**
 
-Every core table includes:
+Every core table includes an `organizationId` column, enforced across Customers, Users, Notes, and Activity Logs.
 
-
-organizationId
-
-
-### Enforced in:
-- Customers
-- Users
-- Notes
-- Activity Logs
-
-### Example rule:
 ```ts
 where: {
   organizationId: user.organizationId
 }
-🔒 Isolation Guarantee
+```
 
-Users can ONLY access:
+**Isolation guarantee:** Users can only ever access their own organization's data. This is enforced at two layers:
 
-Their own organization’s data
-Never cross-org records
-Security enforcement layers:
-JWT contains organizationId
-Every query filters by organizationId
-No global queries allowed without org filter
-⚡ Concurrency Safety (Race Condition Handling)
-Problem
+1. The JWT token contains `organizationId`
+2. Every query filters by `organizationId` — no global queries are permitted
 
-Each user can have a maximum of 5 active customers assigned.
+---
 
-Risk
+## Concurrency Safety
 
-Multiple requests hitting simultaneously can bypass simple checks.
+**Problem:** Each user can have a maximum of 5 active customers assigned. Under simultaneous requests, a naive count-check can be bypassed.
 
-Solution Used
-1. Transaction-based assignment
+**Solution:** Transaction-based assignment.
+
+```ts
 await this.prisma.$transaction(async (tx) => {
   const count = await tx.customer.count({
     where: { assignedToId }
@@ -91,114 +70,102 @@ await this.prisma.$transaction(async (tx) => {
 
   if (count >= 5) throw new Error('Limit reached');
 
-  return tx.customer.update(...)
+  return tx.customer.update(...);
 });
-⚠️ Limitation (Important)
+```
 
-This reduces race risk but is not fully bulletproof under extreme concurrency because:
+> **⚠️ Limitation:** The `count → check → update` sequence is not fully atomic, so this reduces race risk but doesn't eliminate it under extreme concurrency.
 
-count → check → update is not atomic
-🧠 Production-grade improvement (recommended)
+**Production-grade improvement:** Use row-level locking (`SELECT ... FOR UPDATE`) or enforce the constraint via an atomic DB counter.
 
-To make it fully race-proof:
+---
 
-Use row-level locking (SELECT ... FOR UPDATE)
-Or enforce DB constraints / atomic counters
-📊 Performance Strategy
-1. Indexing
+## Performance
 
-Critical indexes added:
+### Indexing
 
-organizationId
-email
-deletedAt
-composite queries for filtering
-2. Query optimization
-Avoid N+1 queries by direct Prisma joins
-Use findMany with filters instead of nested loops
-Select only required fields where needed
-3. Pagination
+Critical indexes are applied on:
 
-Cursor-based pagination:
+- `organizationId`
+- `email`
+- `deletedAt`
+- Composite columns used in frequent filters
 
+### Query Optimization
+
+- Direct Prisma joins to avoid N+1 queries
+- `findMany` with filters instead of nested loops
+- Only required fields are selected where possible
+
+### Pagination
+
+Cursor-based pagination is used throughout:
+
+```ts
 take: limit,
 cursor: { id },
 skip: 1
-Why?
-Better performance than offset pagination
-Stable under large datasets (100k+ records)
-📦 Soft Delete Strategy
+```
 
-Customers use:
+This outperforms offset pagination on large datasets (100k+ records) and remains stable as data grows.
 
-deletedAt
-Behavior:
-Soft deleted customers are hidden in normal queries
-Data is never physically deleted
-Can be restored anytime
-🚀 Scaling Strategy
+---
 
-To scale this system:
+## Soft Deletes
 
-1. Horizontal scaling
-Stateless backend (NestJS)
-Multiple API instances behind load balancer
-2. Database scaling
-Read replicas for heavy reads
-Partitioning by organizationId if needed
-3. Caching layer
-Redis for:
-customer lists
-user sessions
-frequently accessed org data
-4. Queue system
-Activity logs → background processing
-Notifications → async workers
-⚖️ Trade-offs Made
-1. Prisma transactions
+Customers use a `deletedAt` timestamp rather than hard deletion.
 
-✔ Easy to use
-❌ Not fully atomic under extreme concurrency
+- Soft-deleted records are filtered out of normal queries
+- Data is never physically removed
+- Records can be restored at any time
+- Provides a natural audit trail
 
-2. Row-level isolation (instead of DB schemas)
+---
 
-✔ Simple to maintain
-✔ Easier migrations
-❌ Slightly weaker isolation than schema-per-tenant
+## Logging & Error Monitoring
 
-3. Soft delete
+A global logging middleware provides production observability:
 
-✔ Data safety
-✔ Audit-friendly
-❌ Increased query complexity
+- Logs every API request (path, method, `userId`)
+- Captures errors with full stack traces
+- Provides a centralized audit trail for debugging
 
-🚀 Production Improvement (Implemented Choice)
-📌 Logging + Error Monitoring Middleware
+---
 
-A global logging layer was added to:
+## Scaling Strategy
 
-Track all API requests
-Capture errors centrally
-Improve debugging in production
-Benefits:
-Observability of system behavior
-Easier production debugging
-Audit trail for requests
-Example:
-Logs request path, method, userId
-Logs errors with stack trace
-🧪 Testing Strategy
-Frontend Testing
-Parallel API calls simulate race conditions
-Promise.allSettled used for concurrency simulation
-Backend Testing
-Transaction-based assignment tested under simultaneous requests
-🧠 Key Learning Outcome
+| Concern | Approach |
+|---------|---------|
+| Horizontal scaling | Stateless NestJS instances behind a load balancer |
+| Database reads | Read replicas; partition by `organizationId` if needed |
+| Caching | Redis for customer lists, user sessions, and org data |
+| Background work | Queue-based processing for activity logs and notifications |
+
+---
+
+## Trade-offs
+
+| Decision | Pro | Con |
+|----------|-----|-----|
+| Prisma transactions | Simple to use | Not fully atomic under extreme concurrency |
+| Row-level isolation (vs. schema-per-tenant) | Easy migrations, simpler maintenance | Slightly weaker isolation |
+| Soft deletes | Data safety, audit-friendly | Increases query complexity |
+
+---
+
+## Testing Strategy
+
+**Frontend:** Parallel API calls with `Promise.allSettled` to simulate race conditions.
+
+**Backend:** Transaction-based assignment tested under simultaneous requests.
+
+---
+
+## Key Outcomes
 
 This system demonstrates:
 
-Multi-tenant architecture design
-Safe concurrency handling
-Scalable backend structure
-Production-grade thinking in a minimal CRM system
-]
+- Multi-tenant architecture with row-level data isolation
+- Safe concurrency handling via database transactions
+- Scalable, modular backend structure
+- Production-grade observability and error monitoring
