@@ -13,6 +13,23 @@ export class NotesService {
 
   // CREATE NOTE
   async create(user: AuthUser, dto: CreateNoteDto) {
+    // 1. Check if customer exists and is not soft deleted
+    const customer = await this.prisma.customer.findFirst({
+      where: {
+        id: dto.customerId,
+        organizationId: user.organizationId,
+      },
+    });
+
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+
+    if (customer.deletedAt) {
+      throw new Error('Cannot add note to deleted customer');
+    }
+
+    // 2. Create note
     const note = await this.prisma.note.create({
       data: {
         content: dto.content,
@@ -22,11 +39,12 @@ export class NotesService {
       },
     });
 
+    // 3. Log activity
     await this.activityLogsService.log({
       user,
       entityType: 'NOTE',
       entityId: note.id,
-      action: ActivityAction.CREATED, // or NOTE_ADDED if you used separate enum
+      action: ActivityAction.CREATED,
     });
 
     return note;
