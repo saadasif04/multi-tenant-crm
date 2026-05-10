@@ -1,26 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
+
+import { api } from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 type ErrorResponse = {
   message?: string;
 };
 
+type LoginResponse = {
+  access_token: string;
+};
+
 export function LoginForm() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { setSession } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,18 +34,36 @@ export function LoginForm() {
       setLoading(true);
       setError('');
 
-      await login(email, password);
+      // 1. login
+      const res = await api.post<LoginResponse>('/auth/login', {
+        email,
+        password,
+      });
 
+      const token = res.data.access_token;
+
+      // 2. get user
+      const userRes = await api.get('/auth/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // 3. set session (SINGLE SOURCE OF TRUTH)
+      setSession(token, userRes.data);
+      document.cookie = `token=${token}; path=/;`;
+console.log('here')
+      // 4. redirect
       router.push('/customers');
-    } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        const message =
-          (error.response?.data as ErrorResponse)?.message ||
-          'Login failed';
 
-        setError(message);
+    } catch (err: unknown) {
+      if (err instanceof AxiosError) {
+        setError(
+          (err.response?.data as ErrorResponse)?.message ??
+            'Login failed'
+        );
       } else {
-        setError('Something went wrong');
+        setError('Login failed');
       }
     } finally {
       setLoading(false);
@@ -53,57 +71,28 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-md rounded-2xl">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold">
-          Welcome back
-        </CardTitle>
-        <p className="text-sm text-gray-500">
-          Login to continue to your dashboard
-        </p>
-      </CardHeader>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Input
+        type="email"
+        placeholder="Email address"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-11"
-            />
-          </div>
+      <Input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
 
-          <div className="space-y-2">
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-11"
-            />
-          </div>
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
 
-          {error && (
-            <div className="text-sm text-red-500 bg-red-50 p-2 rounded-md">
-              {error}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full h-11 text-base"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </Button>
-
-          <p className="text-xs text-center text-gray-400 pt-2">
-            Secure login powered by your CRM system
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+      <Button className="w-full h-11" disabled={loading}>
+        {loading ? 'Signing in...' : 'Sign in'}
+      </Button>
+    </form>
   );
 }

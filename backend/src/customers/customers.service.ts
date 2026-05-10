@@ -180,7 +180,7 @@ export class CustomersService {
     customerId: number,
     assignedToId: number,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = this.prisma.$transaction(async (tx) => {
       const customer = await tx.customer.findFirst({
         where: {
           id: customerId,
@@ -206,25 +206,25 @@ export class CustomersService {
         );
       }
 
-      const updated = await tx.customer.update({
+      return tx.customer.update({
         where: { id: customerId },
         data: {
           assignedToId,
         },
       });
-
-      try {
-        await this.activityLogsService.log({
-          user,
-          entityType: 'CUSTOMER',
-          entityId: customerId,
-          action: ActivityAction.ASSIGNED,
-        });
-      } catch (err) {
-        console.error('Activity log failed:', err);
-      }
-
-      return updated;
     });
+
+    try {
+      await this.activityLogsService.log({
+        user,
+        entityType: 'CUSTOMER',
+        entityId: customerId,
+        action: ActivityAction.ASSIGNED,
+      });
+    } catch (err) {
+      console.error('Activity log failed:', err);
+    }
+
+    return result;
   }
 }
