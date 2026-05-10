@@ -17,26 +17,53 @@ import { Label } from '@/components/ui/label';
 
 import { api } from '@/lib/axios';
 
-export function CreateCustomerModal() {
+type Customer = {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+};
+
+type Props = {
+  customer: Customer;
+  trigger?: React.ReactNode;
+};
+
+export function EditCustomerModal({ customer, trigger }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
+    name: customer.name,
+    email: customer.email,
+    phone: customer.phone ?? '',
   });
 
-  const queryClient = useQueryClient();
+  const handleOpenChange = (state: boolean) => {
+    setOpen(state);
+
+    if (state) {
+      setForm({
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone ?? '',
+      });
+
+      setError(null);
+    } else {
+      setError(null);
+      setLoading(false);
+    }
+  };
 
   const isValid =
     form.name.trim().length > 0 &&
     form.email.trim().length > 0;
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-
+  const handleSubmit = async () => {
     if (!isValid) {
       setError('Name and email are required');
       return;
@@ -46,99 +73,86 @@ export function CreateCustomerModal() {
       setLoading(true);
       setError(null);
 
-      await api.post('/customers', form);
+      await api.patch(`/customers/${customer.id}`, form);
 
       queryClient.invalidateQueries({
         queryKey: ['customers'],
       });
 
-      setForm({ name: '', email: '', phone: '' });
       setOpen(false);
     } catch (err) {
       console.error(err);
-      setError('Failed to create customer');
+      setError('Failed to update customer');
     } finally {
       setLoading(false);
     }
   };
-
-  const handleOpenChange = (state: boolean) => {
-    setOpen(state);
-
-    if (!state) {
-      setError(null);
-      setLoading(false);
-    }
-  };
+  
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm">+ New Customer</Button>
+        {trigger ?? (
+          <Button variant="outline" size="sm">
+            Edit
+          </Button>
+        )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-sm w-[92vw] p-4">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="text-base">
-            Create Customer
-          </DialogTitle>
+      <DialogContent className="sm:max-w-md w-[95vw] rounded-xl">
+        <DialogHeader>
+          <DialogTitle>Edit Customer</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-4 pt-2">
           {/* NAME */}
           <div className="space-y-1">
-            <Label className="text-xs">Name</Label>
+            <Label>Name</Label>
             <Input
-              placeholder="John Doe"
               value={form.name}
               onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
+                setForm((p) => ({
+                  ...p,
                   name: e.target.value,
                 }))
               }
               disabled={loading}
-              className="h-8 text-sm"
             />
           </div>
 
           {/* EMAIL */}
           <div className="space-y-1">
-            <Label className="text-xs">Email</Label>
+            <Label>Email</Label>
             <Input
-              placeholder="john@example.com"
               value={form.email}
               onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
+                setForm((p) => ({
+                  ...p,
                   email: e.target.value,
                 }))
               }
               disabled={loading}
-              className="h-8 text-sm"
             />
           </div>
 
           {/* PHONE */}
           <div className="space-y-1">
-            <Label className="text-xs">Phone</Label>
+            <Label>Phone</Label>
             <Input
-              placeholder="+92..."
               value={form.phone}
               onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
+                setForm((p) => ({
+                  ...p,
                   phone: e.target.value,
                 }))
               }
               disabled={loading}
-              className="h-8 text-sm"
             />
           </div>
 
           {/* ERROR */}
           {error && (
-            <p className="text-xs text-red-500">
+            <p className="text-sm text-red-500">
               {error}
             </p>
           )}
@@ -146,10 +160,8 @@ export function CreateCustomerModal() {
           {/* ACTIONS */}
           <div className="flex gap-2 pt-2">
             <Button
-              type="button"
               variant="outline"
-              size="sm"
-              className="flex-1 h-8"
+              className="flex-1"
               onClick={() => setOpen(false)}
               disabled={loading}
             >
@@ -157,15 +169,14 @@ export function CreateCustomerModal() {
             </Button>
 
             <Button
-              type="submit"
-              size="sm"
-              className="flex-1 h-8"
+              className="flex-1"
+              onClick={handleSubmit}
               disabled={loading || !isValid}
             >
-              {loading ? '...' : 'Create'}
+              {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

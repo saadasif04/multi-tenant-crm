@@ -7,6 +7,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  // CREATE USER
   async create(dto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
@@ -16,7 +17,25 @@ export class UsersService {
         email: dto.email,
         password: hashedPassword,
         role: dto.role,
-        organizationId: 1, // later replace with admin org from req.user
+        organizationId: dto.organizationId,
+      },
+    });
+  }
+
+  // GET USERS BY ORG
+  async findAll(organizationId: number) {
+    return this.prisma.user.findMany({
+      where: {
+        organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: {
+        id: 'asc',
       },
     });
   }
