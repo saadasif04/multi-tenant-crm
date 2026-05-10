@@ -181,48 +181,31 @@ export class CustomersService {
     assignedToId: number,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. LOCK the customer row (prevents concurrent updates)
-      await tx.$queryRaw`
-        SELECT id
-        FROM "Customer"
-        WHERE id = ${customerId}
-        FOR UPDATE
-      `;
+  // 1. LOCK ALL customers of this user
+  await tx.$queryRaw`
+    SELECT id
+    FROM "Customer"
+    WHERE "assignedToId" = ${assignedToId}
+    FOR UPDATE
+  `;
 
-      // 2. Verify customer exists & belongs to org
-      const customer = await tx.customer.findFirst({
-        where: {
-          id: customerId,
-          organizationId: user.organizationId,
-          deletedAt: null,
-        },
-      });
+  // 2. Now count is safe
+  const activeCount = await tx.customer.count({
+    where: {
+      assignedToId,
+      deletedAt: null,
+    },
+  });
 
-      if (!customer) {
-        throw new NotFoundException('Customer not found');
-      }
+  if (activeCount >= 5) {
+    throw new BadRequestException('User already has maximum 5 active customers');
+  }
 
-      // 3. Re-check limit (safe because of lock ordering)
-      const activeCount = await tx.customer.count({
-        where: {
-          assignedToId,
-          deletedAt: null,
-        },
-      });
-
-      if (activeCount >= 5) {
-        throw new BadRequestException(
-          'User already has maximum 5 active customers',
-        );
-      }
-
-      // 4. Perform update
-      return tx.customer.update({
-        where: { id: customerId },
-        data: {
-          assignedToId,
-        },
-      });
-    });
+  // 3. Assign
+  return tx.customer.update({
+    where: { id: customerId },
+    data: { assignedToId },
+  });
+});
   }
 }

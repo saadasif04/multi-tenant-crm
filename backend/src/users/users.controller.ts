@@ -16,8 +16,8 @@ export class UsersController {
   // ADMIN ONLY CREATE USER
   @Post()
   @Roles(Role.ADMIN)
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateUserDto) {
+    return this.usersService.create(req.user, dto);
   }
 
   // GET USERS (ORG SCOPED)

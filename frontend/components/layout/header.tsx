@@ -3,6 +3,7 @@
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export function Header() {
   const { user, logout, loading } = useAuth();
@@ -36,7 +37,23 @@ export function Header() {
         {/* LOGGED IN */}
         {user ? (
           <>
-            <div className="text-sm text-gray-600 hidden sm:block">
+            {/* NAV LINKS */}
+            <div className="flex items-center gap-2">
+              <Link href="/customers">
+                <Button variant="ghost" size="sm">
+                  Customers
+                </Button>
+              </Link>
+
+              {/* 👇 TEAM BUTTON (ONLY WHEN LOGGED IN) */}
+              <Link href="/team">
+                <Button variant="ghost" size="sm">
+                  Team
+                </Button>
+              </Link>
+            </div>
+
+            <div className="text-sm text-gray-600 hidden sm:block ml-2">
               <span className="font-medium text-gray-900">
                 {user.email}
               </span>{' '}

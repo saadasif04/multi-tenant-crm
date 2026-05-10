@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
+import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -53,6 +53,16 @@ export function CustomerTable({
       </div>
     );
   }
+
+  const testRaceCondition = async () => {
+  const requests = Array.from({ length: 10 }).map((_, i) =>
+    api.patch(`/customers/${i + 13}/assign/17`)
+  );
+
+  const results = await Promise.allSettled(requests);
+
+  console.log('RACE TEST RESULTS:', results);
+};
 
   return (
     <div className="border rounded-md">
@@ -127,6 +137,10 @@ export function CustomerTable({
           })}
         </TableBody>
       </Table>
+
+      <Button onClick={testRaceCondition}>
+  Test Race Condition
+</Button>
     </div>
   );
 }
