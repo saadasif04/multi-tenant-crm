@@ -65,8 +65,11 @@ model Customer {
 
   @@index([organizationId])
   @@index([organizationId, deletedAt])
-  @@index([assignedToId])
+  @@index([assignedToId, deletedAt])
   @@index([createdById])
+
+  @@index([organizationId, name])
+  @@unique([organizationId, email])
 }
 
 /* =========================
