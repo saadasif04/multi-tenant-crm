@@ -46,11 +46,13 @@ export function Header() {
               </Link>
 
               {/* 👇 TEAM BUTTON (ONLY WHEN LOGGED IN) */}
-              <Link href="/team">
-                <Button variant="ghost" size="sm">
-                  Team
-                </Button>
-              </Link>
+              {user.role == 'ADMIN' && (
+                  <Link href="/team">
+                   <Button variant="ghost" size="sm">
+                     Team
+                   </Button>
+                  </Link>
+              )}
             </div>
 
             <div className="text-sm text-gray-600 hidden sm:block ml-2">
