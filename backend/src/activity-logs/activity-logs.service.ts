@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../shared/types/auth.types';
+import { ActivityAction, ActivityEntity } from './types/activity-logs.types';
 
 @Injectable()
 export class ActivityLogsService {
@@ -8,10 +9,22 @@ export class ActivityLogsService {
 
   async log(params: {
     user: AuthUser;
-    entityType: string;
+    entityType: ActivityEntity;
     entityId: number;
-    action: string;
+    action: ActivityAction;
   }) {
+    if (!params.user?.id || !params.user?.organizationId) {
+      throw new BadRequestException('Invalid user context for activity log');
+    }
+
+    if (!params.entityId || params.entityId <= 0) {
+      throw new BadRequestException('Invalid entityId for activity log');
+    }
+
+    if (!params.entityType || !params.action) {
+      throw new BadRequestException('Invalid activity log payload');
+    }
+
     return this.prisma.activityLog.create({
       data: {
         entityType: params.entityType,
@@ -24,6 +37,10 @@ export class ActivityLogsService {
   }
 
   async findAll(user: AuthUser) {
+    if (!user?.organizationId) {
+      throw new BadRequestException('Invalid user context');
+    }
+
     return this.prisma.activityLog.findMany({
       where: {
         organizationId: user.organizationId,

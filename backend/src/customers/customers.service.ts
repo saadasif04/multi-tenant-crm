@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomerDto } from './dto/query-customer.dto';
@@ -26,19 +30,23 @@ export class CustomersService {
       },
     });
 
-    await this.activityLogsService.log({
-      user,
-      entityType: 'CUSTOMER',
-      entityId: customer.id,
-      action: ActivityAction.CREATED,
-    });
+    try {
+      await this.activityLogsService.log({
+        user,
+        entityType: 'CUSTOMER',
+        entityId: customer.id,
+        action: ActivityAction.CREATED,
+      });
+    } catch (err) {
+      console.error('Activity log failed:', err);
+    }
 
     return customer;
   }
 
-  // GET ALL (pagination + search + soft delete filter)
+  // GET ALL (cursor pagination)
   async findAll(user: AuthUser, query: QueryCustomerDto) {
-    const limit = query.limit ?? 10;
+    const limit = query.limit ? Number(query.limit) : 10;
 
     return this.prisma.customer.findMany({
       where: {
@@ -62,11 +70,20 @@ export class CustomersService {
 
   // UPDATE
   async update(user: AuthUser, id: number, dto: CreateCustomerDto) {
-    const customer = await this.prisma.customer.update({
+    const existing = await this.prisma.customer.findFirst({
       where: {
         id,
         organizationId: user.organizationId,
+        deletedAt: null,
       },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const updated = await this.prisma.customer.update({
+      where: { id },
       data: {
         name: dto.name,
         email: dto.email,
@@ -74,67 +91,108 @@ export class CustomersService {
       },
     });
 
-    await this.activityLogsService.log({
-      user,
-      entityType: 'CUSTOMER',
-      entityId: id,
-      action: ActivityAction.UPDATED,
-    });
+    try {
+      await this.activityLogsService.log({
+        user,
+        entityType: 'CUSTOMER',
+        entityId: id,
+        action: ActivityAction.UPDATED,
+      });
+    } catch (err) {
+      console.error('Activity log failed:', err);
+    }
 
-    return customer;
+    return updated;
   }
 
   // SOFT DELETE
   async remove(user: AuthUser, id: number) {
-    const customer = await this.prisma.customer.update({
+    const existing = await this.prisma.customer.findFirst({
       where: {
         id,
         organizationId: user.organizationId,
+        deletedAt: null,
       },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const deleted = await this.prisma.customer.update({
+      where: { id },
       data: {
         deletedAt: new Date(),
       },
     });
 
-    await this.activityLogsService.log({
-      user,
-      entityType: 'CUSTOMER',
-      entityId: id,
-      action: ActivityAction.DELETED,
-    });
+    try {
+      await this.activityLogsService.log({
+        user,
+        entityType: 'CUSTOMER',
+        entityId: id,
+        action: ActivityAction.DELETED,
+      });
+    } catch (err) {
+      console.error('Activity log failed:', err);
+    }
 
-    return customer;
+    return deleted;
   }
 
   // RESTORE
   async restore(user: AuthUser, id: number) {
-    const customer = await this.prisma.customer.update({
+    const existing = await this.prisma.customer.findFirst({
       where: {
         id,
         organizationId: user.organizationId,
       },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const restored = await this.prisma.customer.update({
+      where: { id },
       data: {
         deletedAt: null,
       },
     });
 
-    await this.activityLogsService.log({
-      user,
-      entityType: 'CUSTOMER',
-      entityId: id,
-      action: ActivityAction.RESTORED,
-    });
+    try {
+      await this.activityLogsService.log({
+        user,
+        entityType: 'CUSTOMER',
+        entityId: id,
+        action: ActivityAction.RESTORED,
+      });
+    } catch (err) {
+      console.error('Activity log failed:', err);
+    }
 
-    return customer;
+    return restored;
   }
 
+  // ASSIGN CUSTOMER (LIMIT + SAFE TRANSACTION)
   async assignCustomer(
     user: AuthUser,
     customerId: number,
     assignedToId: number,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Count active customers for target user
+      const customer = await tx.customer.findFirst({
+        where: {
+          id: customerId,
+          organizationId: user.organizationId,
+          deletedAt: null,
+        },
+      });
+
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+
       const activeCount = await tx.customer.count({
         where: {
           assignedToId,
@@ -142,34 +200,31 @@ export class CustomersService {
         },
       });
 
-      // 2. Enforce limit
       if (activeCount >= 5) {
-        throw new Error('User already has maximum 5 active customers');
+        throw new BadRequestException(
+          'User already has maximum 5 active customers',
+        );
       }
 
-      // 3. Update assignment
-      const customer = await tx.customer.update({
-        where: {
-          id: customerId,
-          organizationId: user.organizationId,
-        },
+      const updated = await tx.customer.update({
+        where: { id: customerId },
         data: {
           assignedToId,
         },
       });
 
-      // 4. Log activity
-      await tx.activityLog.create({
-        data: {
+      try {
+        await this.activityLogsService.log({
+          user,
           entityType: 'CUSTOMER',
           entityId: customerId,
           action: ActivityAction.ASSIGNED,
-          organizationId: user.organizationId,
-          performedById: user.id,
-        },
-      });
+        });
+      } catch (err) {
+        console.error('Activity log failed:', err);
+      }
 
-      return customer;
+      return updated;
     });
   }
 }

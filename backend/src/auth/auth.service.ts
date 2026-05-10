@@ -12,12 +12,20 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string) {
-    // Explicitly type the awaited result
+    if (!email || !password) {
+      throw new UnauthorizedException('Email and password are required');
+    }
+
     const user: User | null = await this.prisma.user.findUnique({
       where: { email },
     });
 
-    if (!user?.password) {
+    // Prevent user enumeration
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.password) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

@@ -1,9 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { AuthUser } from '../shared/types/auth.types';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { ActivityAction } from '../activity-logs/types/activity-logs.types';
+
 @Injectable()
 export class NotesService {
   constructor(
@@ -13,7 +18,6 @@ export class NotesService {
 
   // CREATE NOTE
   async create(user: AuthUser, dto: CreateNoteDto) {
-    // 1. Check if customer exists and is not soft deleted
     const customer = await this.prisma.customer.findFirst({
       where: {
         id: dto.customerId,
@@ -22,14 +26,13 @@ export class NotesService {
     });
 
     if (!customer) {
-      throw new Error('Customer not found');
+      throw new NotFoundException('Customer not found');
     }
 
     if (customer.deletedAt) {
-      throw new Error('Cannot add note to deleted customer');
+      throw new BadRequestException('Cannot add note to deleted customer');
     }
 
-    // 2. Create note
     const note = await this.prisma.note.create({
       data: {
         content: dto.content,
@@ -39,18 +42,21 @@ export class NotesService {
       },
     });
 
-    // 3. Log activity
-    await this.activityLogsService.log({
-      user,
-      entityType: 'NOTE',
-      entityId: note.id,
-      action: ActivityAction.CREATED,
-    });
+    try {
+      await this.activityLogsService.log({
+        user,
+        entityType: 'NOTE',
+        entityId: note.id,
+        action: ActivityAction.CREATED,
+      });
+    } catch (err) {
+      console.error('Activity log failed:', err);
+    }
 
     return note;
   }
 
-  // GET NOTES (by org + role)
+  // GET ALL NOTES (org-wide)
   async findAll(user: AuthUser) {
     return this.prisma.note.findMany({
       where: {
@@ -68,6 +74,17 @@ export class NotesService {
 
   // GET NOTES FOR ONE CUSTOMER
   async findByCustomer(user: AuthUser, customerId: number) {
+    const customer = await this.prisma.customer.findFirst({
+      where: {
+        id: customerId,
+        organizationId: user.organizationId,
+      },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
     return this.prisma.note.findMany({
       where: {
         customerId,
@@ -75,6 +92,9 @@ export class NotesService {
       },
       include: {
         createdBy: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }
