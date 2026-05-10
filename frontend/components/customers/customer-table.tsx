@@ -127,10 +127,6 @@ export function CustomerTable({
           })}
         </TableBody>
       </Table>
-
-      <Button onClick={testRaceCondition}>
-  Test Race Condition
-</Button>
     </div>
   );
 }

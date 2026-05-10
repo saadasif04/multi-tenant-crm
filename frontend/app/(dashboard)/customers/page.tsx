@@ -89,8 +89,6 @@ export default function CustomersPage() {
         ) : (
           <CustomerTable
             data={customers}
-            onEdit={(c) => console.log('edit', c)}
-            onAssign={(c) => console.log('assign', c)}
           />
         )}
       </Card>
