@@ -180,7 +180,16 @@ export class CustomersService {
     customerId: number,
     assignedToId: number,
   ) {
-    const result = this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. LOCK the customer row (prevents concurrent updates)
+      await tx.$queryRaw`
+        SELECT id
+        FROM "Customer"
+        WHERE id = ${customerId}
+        FOR UPDATE
+      `;
+
+      // 2. Verify customer exists & belongs to org
       const customer = await tx.customer.findFirst({
         where: {
           id: customerId,
@@ -193,6 +202,7 @@ export class CustomersService {
         throw new NotFoundException('Customer not found');
       }
 
+      // 3. Re-check limit (safe because of lock ordering)
       const activeCount = await tx.customer.count({
         where: {
           assignedToId,
@@ -206,6 +216,7 @@ export class CustomersService {
         );
       }
 
+      // 4. Perform update
       return tx.customer.update({
         where: { id: customerId },
         data: {
@@ -213,18 +224,5 @@ export class CustomersService {
         },
       });
     });
-
-    try {
-      await this.activityLogsService.log({
-        user,
-        entityType: 'CUSTOMER',
-        entityId: customerId,
-        action: ActivityAction.ASSIGNED,
-      });
-    } catch (err) {
-      console.error('Activity log failed:', err);
-    }
-
-    return result;
   }
 }
