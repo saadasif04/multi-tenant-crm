@@ -13,3 +13,19 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.request.use((config) => {
+  console.log('➡️ REQUEST:', config.method, config.url, config.data);
+  return config;
+});
+
+api.interceptors.response.use(
+  (res) => {
+    console.log('⬅️ RESPONSE:', res.status, res.data);
+    return res;
+  },
+  (err) => {
+    console.error('❌ RESPONSE ERROR:', err.response?.data || err.message);
+    return Promise.reject(err);
+  }
+);
