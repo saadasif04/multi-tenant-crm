@@ -45,9 +45,9 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL=postgresql://neondb_owner:npg_Zt9LK8akYzvc@ep-snowy-mud-aq6yijcp.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require&pgbouncer=true
-JWT_SECRET=your_jwt_secret
-PORT=3000
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require&pgbouncer=true
+JWT_SECRET=your_jwt_secret_here
+PORT=4000
 ```
 
 ## Database Setup
