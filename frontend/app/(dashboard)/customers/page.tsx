@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useAuth } from '@/context/auth-context';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,22 +12,26 @@ import { CustomerTable } from '@/components/customers/customer-table';
 import { CreateCustomerModal } from '@/components/customers/create-customer-modal';
 
 export default function CustomersPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
   const [cursor, setCursor] = useState<number | undefined>();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
       setCursor(undefined);
     }, 400);
-
     return () => clearTimeout(handler);
   }, [search]);
 
-  const { data, isLoading, isError } = useCustomers(
+  const { data, isLoading, isError, refetch } = useCustomers(
     cursor,
-    debouncedSearch
+    debouncedSearch,
+    showDeleted,
   );
 
   const customers = Array.isArray(data) ? data : data?.data ?? [];
@@ -35,9 +40,7 @@ export default function CustomersPage() {
     return (
       <div className="p-6">
         <Card className="p-6 border-red-200 bg-red-50">
-          <p className="text-red-600 font-medium">
-            Failed to load customers
-          </p>
+          <p className="text-red-600 font-medium">Failed to load customers</p>
         </Card>
       </div>
     );
@@ -48,15 +51,29 @@ export default function CustomersPage() {
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Customers
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
           <p className="text-sm text-gray-500">
             Manage your customers and their details
           </p>
         </div>
 
-        <CreateCustomerModal />
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={(e) => {
+                  setShowDeleted(e.target.checked);
+                  setCursor(undefined);
+                }}
+                className="rounded"
+              />
+              Show deleted
+            </label>
+          )}
+          <CreateCustomerModal />
+        </div>
       </div>
 
       {/* SEARCH BAR */}
@@ -67,12 +84,8 @@ export default function CustomersPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-
         {search && (
-          <Button
-            variant="ghost"
-            onClick={() => setSearch('')}
-          >
+          <Button variant="ghost" onClick={() => setSearch('')}>
             Clear
           </Button>
         )}
@@ -89,6 +102,7 @@ export default function CustomersPage() {
         ) : (
           <CustomerTable
             data={customers}
+            onRefresh={() => refetch()}
           />
         )}
       </Card>
@@ -98,7 +112,6 @@ export default function CustomersPage() {
         <p className="text-sm text-gray-500">
           Showing {customers.length} results
         </p>
-
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -109,11 +122,7 @@ export default function CustomersPage() {
           >
             Next
           </Button>
-
-          <Button
-            variant="ghost"
-            onClick={() => setCursor(undefined)}
-          >
+          <Button variant="ghost" onClick={() => setCursor(undefined)}>
             Reset
           </Button>
         </div>

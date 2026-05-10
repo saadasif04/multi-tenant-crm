@@ -1,21 +1,17 @@
 'use client';
 
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell,
+  TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
 import { EditCustomerModal } from './edit-customer-modal';
 import { AssignCustomerModal } from './assign-customer-modal';
-import { useAuth } from '@/context/auth-context';
 import { CustomerDetailsModal } from './customer-details-modal';
+import { useAuth } from '@/context/auth-context';
+import { api } from '@/lib/axios';
+import { useState } from 'react';
 
 type Customer = {
   id: number;
@@ -23,20 +19,39 @@ type Customer = {
   email: string;
   phone?: string;
   assignedToId?: number | null;
+  deletedAt?: string | null;
 };
 
 type Props = {
   data: Customer[];
   loading?: boolean;
+  onRefresh: () => void;
 };
 
-export function CustomerTable({
-  data,
-  loading = false,
-}: Props) {
+export function CustomerTable({ data, loading = false, onRefresh }: Props) {
   const { user } = useAuth();
-
   const isAdmin = user?.role === 'ADMIN';
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+
+  async function handleDelete(id: number) {
+    setLoadingId(id);
+    try {
+      await api.patch(`/customers/${id}/delete`);
+      onRefresh();
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  async function handleRestore(id: number) {
+    setLoadingId(id);
+    try {
+      await api.patch(`/customers/${id}/restore`);
+      onRefresh();
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -62,66 +77,76 @@ export function CustomerTable({
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Phone</TableHead>
-            <TableHead className="text-right">
-              Actions
-            </TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {data.map((customer) => {
             const isAssigned = Boolean(customer.assignedToId);
+            const isDeleted = Boolean(customer.deletedAt);
+            const isProcessing = loadingId === customer.id;
 
             return (
               <TableRow
                 key={customer.id}
-                className="hover:bg-muted/50 transition"
+                className={`hover:bg-muted/50 transition ${isDeleted ? 'opacity-60' : ''}`}
               >
-                {/* NAME */}
-                <TableCell className="font-medium">
-                  {customer.name}
-                </TableCell>
+                <TableCell className="font-medium">{customer.name}</TableCell>
+                <TableCell className="text-muted-foreground">{customer.email}</TableCell>
+                <TableCell className="text-muted-foreground">{customer.phone ?? '-'}</TableCell>
 
-                {/* EMAIL */}
-                <TableCell className="text-muted-foreground">
-                  {customer.email}
-                </TableCell>
-
-                {/* PHONE */}
-                <TableCell className="text-muted-foreground">
-                  {customer.phone ?? '-'}
+                {/* STATUS BADGE */}
+                <TableCell>
+                  {isDeleted ? (
+                    <Badge variant="destructive">Deleted</Badge>
+                  ) : isAssigned ? (
+                    <Badge variant="secondary">Assigned</Badge>
+                  ) : (
+                    <Badge variant="outline">Unassigned</Badge>
+                  )}
                 </TableCell>
 
                 {/* ACTIONS */}
                 <TableCell className="text-right space-x-2">
-                  <CustomerDetailsModal customer={customer} />
-  <EditCustomerModal customer={customer} />
+                  {!isDeleted && (
+                    <>
+                      <CustomerDetailsModal customer={customer} />
+                      <EditCustomerModal customer={customer} />
 
-  {(() => {
-    const isAssigned = Boolean(customer.assignedToId);
+                      {isAdmin && (
+                        <AssignCustomerModal customer={customer} />
+                      )}
 
-    return (
-      <>
-        {/* ADMIN: always see assign + badge */}
-        {isAdmin && (
-          <AssignCustomerModal customer={customer} />
-        )}
+                      {!isAdmin && !isAssigned && (
+                        <AssignCustomerModal customer={customer} />
+                      )}
+                    </>
+                  )}
 
-        {/* MEMBER: only show assign if NOT assigned */}
-        {!isAdmin && !isAssigned && (
-          <AssignCustomerModal customer={customer} />
-        )}
-
-        {/* BADGE: show if assigned (both roles) */}
-        {isAssigned && (
-          <Badge variant="secondary">
-            Assigned
-          </Badge>
-        )}
-      </>
-    );
-  })()}
-</TableCell>
+                  {isAdmin && (
+                    isDeleted ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isProcessing}
+                        onClick={() => handleRestore(customer.id)}
+                      >
+                        {isProcessing ? 'Restoring...' : 'Restore'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isProcessing}
+                        onClick={() => handleDelete(customer.id)}
+                      >
+                        {isProcessing ? 'Deleting...' : 'Delete'}
+                      </Button>
+                    )
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}

@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsNumber, IsBoolean, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class QueryCustomerDto {
   @IsOptional()
@@ -17,4 +17,9 @@ export class QueryCustomerDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  showDeleted?: boolean;
 }

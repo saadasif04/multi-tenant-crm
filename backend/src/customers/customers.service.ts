@@ -46,27 +46,27 @@ export class CustomersService {
 
   // GET ALL (cursor pagination)
   async findAll(user: AuthUser, query: QueryCustomerDto) {
-    const limit = query.limit ? Number(query.limit) : 10;
+  const limit = query.limit ? Number(query.limit) : 10;
 
-    return this.prisma.customer.findMany({
-      where: {
-        organizationId: user.organizationId,
-        deletedAt: null,
-        OR: query.search
-          ? [
-              { name: { contains: query.search, mode: 'insensitive' } },
-              { email: { contains: query.search, mode: 'insensitive' } },
-            ]
-          : undefined,
-      },
-      take: limit,
-      ...(query.cursor && {
-        skip: 1,
-        cursor: { id: Number(query.cursor) },
-      }),
-      orderBy: { id: 'desc' },
-    });
-  }
+  return this.prisma.customer.findMany({
+    where: {
+      organizationId: user.organizationId,
+      deletedAt: query.showDeleted ? { not: null } : null,
+      OR: query.search
+        ? [
+            { name: { contains: query.search, mode: 'insensitive' } },
+            { email: { contains: query.search, mode: 'insensitive' } },
+          ]
+        : undefined,
+    },
+    take: limit,
+    ...(query.cursor && {
+      skip: 1,
+      cursor: { id: Number(query.cursor) },
+    }),
+    orderBy: { id: 'desc' },
+  });
+}
 
   // UPDATE
   async update(user: AuthUser, id: number, dto: CreateCustomerDto) {
