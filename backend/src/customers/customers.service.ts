@@ -38,9 +38,7 @@ export class CustomersService {
 
   // GET ALL (pagination + search + soft delete filter)
   async findAll(user: AuthUser, query: QueryCustomerDto) {
-    const page = Number(query.page || 1);
-    const limit = Number(query.limit || 10);
-    const skip = (page - 1) * limit;
+    const limit = query.limit ?? 10;
 
     return this.prisma.customer.findMany({
       where: {
@@ -53,9 +51,12 @@ export class CustomersService {
             ]
           : undefined,
       },
-      skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
+      ...(query.cursor && {
+        skip: 1,
+        cursor: { id: Number(query.cursor) },
+      }),
+      orderBy: { id: 'desc' },
     });
   }
 
