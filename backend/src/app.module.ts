@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CustomersModule } from './customers/customers.module';
 import { NotesModule } from './notes/notes.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ActivityLogsModule } from './activity-logs/activity-logs.module';
       isGlobal: true,
     }),
     AuthModule,
+    UsersModule,
     CustomersModule,
     NotesModule,
     ActivityLogsModule,

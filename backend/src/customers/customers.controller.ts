@@ -12,7 +12,7 @@ import {
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomerDto } from './dto/query-customer.dto';
-import { JwtAuthGuard } from '../auth/jwt.guard';
+import { JwtAuthGuard } from '../shared/guards/jwt.guard';
 import type { AuthenticatedRequest } from '../shared/types/auth.types';
 
 @UseGuards(JwtAuthGuard)
