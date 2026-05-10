@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { EditCustomerModal } from './edit-customer-modal';
 import { AssignCustomerModal } from './assign-customer-modal';
 import { useAuth } from '@/context/auth-context';
+import { CustomerDetailsModal } from './customer-details-modal';
 
 type Customer = {
   id: number;
@@ -93,6 +94,7 @@ export function CustomerTable({
 
                 {/* ACTIONS */}
                 <TableCell className="text-right space-x-2">
+                  <CustomerDetailsModal customer={customer} />
   <EditCustomerModal customer={customer} />
 
   {(() => {
