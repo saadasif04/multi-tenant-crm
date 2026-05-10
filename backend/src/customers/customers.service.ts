@@ -59,6 +59,20 @@ export class CustomersService {
           ]
         : undefined,
     },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      assignedToId: true,
+      deletedAt: true,
+      assignedTo: {          // add this
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
     take: limit,
     ...(query.cursor && {
       skip: 1,
@@ -67,7 +81,6 @@ export class CustomersService {
     orderBy: { id: 'desc' },
   });
 }
-
   // UPDATE
   async update(user: AuthUser, id: number, dto: CreateCustomerDto) {
     const existing = await this.prisma.customer.findFirst({

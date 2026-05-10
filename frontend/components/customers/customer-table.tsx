@@ -20,6 +20,10 @@ type Customer = {
   phone?: string;
   assignedToId?: number | null;
   deletedAt?: string | null;
+  assignedTo?: {          // add this
+    id: number;
+    name: string;
+  } | null;
 };
 
 type Props = {
