@@ -15,7 +15,11 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://multi-tenant-crm-kn3j.vercel.app', // your Vercel URL
+    ],
     credentials: true,
   });
 
