@@ -54,16 +54,6 @@ export function CustomerTable({
     );
   }
 
-  const testRaceCondition = async () => {
-  const requests = Array.from({ length: 10 }).map((_, i) =>
-    api.patch(`/customers/${i + 13}/assign/17`)
-  );
-
-  const results = await Promise.allSettled(requests);
-
-  console.log('RACE TEST RESULTS:', results);
-};
-
   return (
     <div className="border rounded-md">
       <Table>
