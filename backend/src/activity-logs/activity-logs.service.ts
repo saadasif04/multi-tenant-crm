@@ -36,7 +36,7 @@ export class ActivityLogsService {
     });
   }
 
-  async findAll(user: AuthUser) {
+  async findAll(user: AuthUser, cursor?: number, limit = 10) {
     if (!user?.organizationId) {
       throw new BadRequestException('Invalid user context');
     }
@@ -44,12 +44,24 @@ export class ActivityLogsService {
     return this.prisma.activityLog.findMany({
       where: {
         organizationId: user.organizationId,
+        ...(user.role !== 'ADMIN' && {
+          performedById: user.id,
+        }),
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { id: 'desc' },
+      take: limit,
+      ...(cursor && {
+        skip: 1,
+        cursor: { id: cursor },
+      }),
       include: {
-        performedBy: true,
+        performedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
   }

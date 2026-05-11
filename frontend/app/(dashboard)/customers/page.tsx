@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CreateCustomerModal } from '@/components/customers/create-customer-modal';
+import { ActivityLogsTable } from '@/components/activity-logs/activity-logs-table';
 
 export default function CustomersPage() {
   const { user } = useAuth();
@@ -58,20 +59,19 @@ export default function CustomersPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isAdmin && (
-            <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showDeleted}
-                onChange={(e) => {
-                  setShowDeleted(e.target.checked);
-                  setCursor(undefined);
-                }}
-                className="rounded"
-              />
-              Show deleted
-            </label>
-          )}
+          <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showDeleted}
+              onChange={(e) => {
+                setShowDeleted(e.target.checked);
+                setCursor(undefined);
+              }}
+              className="rounded"
+            />
+            {isAdmin ? 'Show deleted' : 'Show my deleted'}
+          </label>
+
           <CreateCustomerModal />
         </div>
       </div>
@@ -103,6 +103,12 @@ export default function CustomersPage() {
           <CustomerTable
             data={customers}
             onRefresh={() => refetch()}
+            onShowDeletedReset={() => {
+              if (!isAdmin) {
+                setShowDeleted(false);
+                setCursor(undefined);
+              }
+            }}
           />
         )}
       </Card>
@@ -126,6 +132,22 @@ export default function CustomersPage() {
             Reset
           </Button>
         </div>
+      </div>
+
+      {/* ACTIVITY LOGS */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Activity Logs</h2>
+          <p className="text-sm text-gray-500">
+            {isAdmin
+              ? 'All activity across your organization'
+              : 'Your recent activity'}
+          </p>
+        </div>
+
+        <Card className="p-0 overflow-hidden">
+          <ActivityLogsTable />
+        </Card>
       </div>
     </div>
   );

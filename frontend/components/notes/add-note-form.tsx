@@ -9,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 export function AddNoteForm({ customerId }: { customerId: number }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-
   const queryClient = useQueryClient();
 
   const addNote = async () => {
@@ -17,17 +16,13 @@ export function AddNoteForm({ customerId }: { customerId: number }) {
 
     try {
       setLoading(true);
-
       await api.post('/notes', {
         content: text,
         customerId,
       });
-
       setText('');
-
-      queryClient.invalidateQueries({
-        queryKey: ['notes', customerId],
-      });
+      queryClient.invalidateQueries({ queryKey: ['notes', customerId] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     } finally {
       setLoading(false);
     }
@@ -40,7 +35,6 @@ export function AddNoteForm({ customerId }: { customerId: number }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
-
       <Button
         onClick={addNote}
         disabled={loading || !text.trim()}

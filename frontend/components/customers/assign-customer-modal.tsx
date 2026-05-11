@@ -2,15 +2,10 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/axios';
@@ -35,7 +30,6 @@ type Props = {
 export function AssignCustomerModal({ customer }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
   const isAdmin = user?.role === 'ADMIN';
 
   const [open, setOpen] = useState(false);
@@ -43,7 +37,6 @@ export function AssignCustomerModal({ customer }: Props) {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // fetch users only when needed
   const { data: users } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: async () => {
@@ -53,36 +46,29 @@ export function AssignCustomerModal({ customer }: Props) {
     enabled: isAdmin && open,
   });
 
-  // 🔥 DEFAULT: use assigned user OR fallback to first user
-  const defaultUserId =
-    isAdmin
-      ? customer.assignedToId ?? users?.[0]?.id ?? null
-      : user?.id ?? null;
+  async function assignToSelf() {
+    try {
+      setLoading(true);
+      await api.patch(`/customers/${customer.id}/assign/${user?.id}`);
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+    } catch {
+      console.error('Failed to assign');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const effectiveUserId =
-    selectedUserId ?? defaultUserId;
+  async function assignAsAdmin() {
+    const userIdToAssign = selectedUserId ?? users?.[0]?.id;
+    if (!userIdToAssign) return;
 
-  const assign = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const userIdToAssign = isAdmin
-        ? effectiveUserId
-        : user?.id;
-
-      if (!userIdToAssign) {
-        throw new Error('No user selected');
-      }
-
-      await api.patch(
-        `/customers/${customer.id}/assign/${userIdToAssign}`
-      );
-
-      queryClient.invalidateQueries({
-        queryKey: ['customers'],
-      });
-
+      await api.patch(`/customers/${customer.id}/assign/${userIdToAssign}`);
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
       setOpen(false);
       setSelectedUserId(null);
     } catch {
@@ -90,11 +76,10 @@ export function AssignCustomerModal({ customer }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleOpenChange = (state: boolean) => {
     setOpen(state);
-
     if (!state) {
       setError(null);
       setSelectedUserId(null);
@@ -102,12 +87,23 @@ export function AssignCustomerModal({ customer }: Props) {
     }
   };
 
+  if (!isAdmin) {
+    return (
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={loading}
+        onClick={assignToSelf}
+      >
+        {loading ? 'Assigning...' : 'Assign to me'}
+      </Button>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary">
-          Assign
-        </Button>
+        <Button size="sm" variant="secondary">Assign</Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md w-[95vw] rounded-xl">
@@ -117,41 +113,26 @@ export function AssignCustomerModal({ customer }: Props) {
 
         <div className="space-y-4 pt-2">
           <p className="text-sm text-muted-foreground">
-            Assign{' '}
-            <span className="font-medium">{customer.name}</span>
+            Assign <span className="font-medium">{customer.name}</span> to a team member
           </p>
 
-          {/* ADMIN MODE */}
-          {isAdmin ? (
-            <div className="space-y-2">
-              <Label>Select User</Label>
+          <div className="space-y-2">
+            <Label>Select User</Label>
+            <select
+              className="w-full border rounded-md p-2 text-sm"
+              value={selectedUserId ?? users?.[0]?.id ?? ''}
+              onChange={(e) => setSelectedUserId(Number(e.target.value))}
+            >
+              {users?.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.email})
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <select
-                className="w-full border rounded-md p-2 text-sm"
-                value={effectiveUserId ?? ''}
-                onChange={(e) =>
-                  setSelectedUserId(Number(e.target.value))
-                }
-              >
-                {users?.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              This customer will be assigned to you
-            </p>
-          )}
+          {error && <p className="text-sm text-red-500">{error}</p>}
 
-          {/* ERROR */}
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-
-          {/* ACTIONS */}
           <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
@@ -161,10 +142,9 @@ export function AssignCustomerModal({ customer }: Props) {
             >
               Cancel
             </Button>
-
             <Button
               className="flex-1"
-              onClick={assign}
+              onClick={assignAsAdmin}
               disabled={loading}
             >
               {loading ? 'Assigning...' : 'Confirm'}

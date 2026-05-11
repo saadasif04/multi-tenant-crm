@@ -2,7 +2,17 @@
 
 import { useCustomerNotes } from './hooks/useNotes';
 import { NoteItem } from './note-item';
-import { Note } from './types/note';
+
+type Note = {
+  id: number;
+  content: string;
+  createdAt: string;
+  createdBy: {
+    id: number;
+    name: string;
+    email: string;
+  };
+};
 
 export function NotesList({ customerId }: { customerId: number }) {
   const { data, isLoading } = useCustomerNotes(customerId);
@@ -13,15 +23,13 @@ export function NotesList({ customerId }: { customerId: number }) {
 
   if (!data?.length) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No notes yet.
-      </p>
+      <p className="text-sm text-muted-foreground">No notes yet.</p>
     );
   }
 
   return (
     <div className="space-y-2">
-    {(data as Note[]).map((note) => (
+      {(data as Note[]).map((note) => (
         <NoteItem key={note.id} note={note} />
       ))}
     </div>

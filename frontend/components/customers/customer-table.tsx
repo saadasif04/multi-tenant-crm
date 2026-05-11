@@ -12,6 +12,7 @@ import { CustomerDetailsModal } from './customer-details-modal';
 import { useAuth } from '@/context/auth-context';
 import { api } from '@/lib/axios';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Customer = {
   id: number;
@@ -20,7 +21,7 @@ type Customer = {
   phone?: string;
   assignedToId?: number | null;
   deletedAt?: string | null;
-  assignedTo?: {          // add this
+  assignedTo?: {
     id: number;
     name: string;
   } | null;
@@ -30,18 +31,26 @@ type Props = {
   data: Customer[];
   loading?: boolean;
   onRefresh: () => void;
+  onShowDeletedReset?: () => void;
 };
 
-export function CustomerTable({ data, loading = false, onRefresh }: Props) {
+export function CustomerTable({
+  data,
+  loading = false,
+  onRefresh,
+  onShowDeletedReset,
+}: Props) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const [loadingId, setLoadingId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   async function handleDelete(id: number) {
     setLoadingId(id);
     try {
       await api.patch(`/customers/${id}/delete`);
       onRefresh();
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     } finally {
       setLoadingId(null);
     }
@@ -51,7 +60,8 @@ export function CustomerTable({ data, loading = false, onRefresh }: Props) {
     setLoadingId(id);
     try {
       await api.patch(`/customers/${id}/restore`);
-      onRefresh();
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+      onShowDeletedReset?.();
     } finally {
       setLoadingId(null);
     }
@@ -101,7 +111,6 @@ export function CustomerTable({ data, loading = false, onRefresh }: Props) {
                 <TableCell className="text-muted-foreground">{customer.email}</TableCell>
                 <TableCell className="text-muted-foreground">{customer.phone ?? '-'}</TableCell>
 
-                {/* STATUS BADGE */}
                 <TableCell>
                   {isDeleted ? (
                     <Badge variant="destructive">Deleted</Badge>
@@ -112,43 +121,36 @@ export function CustomerTable({ data, loading = false, onRefresh }: Props) {
                   )}
                 </TableCell>
 
-                {/* ACTIONS */}
                 <TableCell className="text-right space-x-2">
                   {!isDeleted && (
                     <>
                       <CustomerDetailsModal customer={customer} />
                       <EditCustomerModal customer={customer} />
-
-                      {isAdmin && (
-                        <AssignCustomerModal customer={customer} />
-                      )}
-
+                      {isAdmin && <AssignCustomerModal customer={customer} />}
                       {!isAdmin && !isAssigned && (
                         <AssignCustomerModal customer={customer} />
                       )}
                     </>
                   )}
 
-                  {isAdmin && (
-                    isDeleted ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isProcessing}
-                        onClick={() => handleRestore(customer.id)}
-                      >
-                        {isProcessing ? 'Restoring...' : 'Restore'}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={isProcessing}
-                        onClick={() => handleDelete(customer.id)}
-                      >
-                        {isProcessing ? 'Deleting...' : 'Delete'}
-                      </Button>
-                    )
+                  {isDeleted ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isProcessing}
+                      onClick={() => handleRestore(customer.id)}
+                    >
+                      {isProcessing ? 'Restoring...' : 'Restore'}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={isProcessing}
+                      onClick={() => handleDelete(customer.id)}
+                    >
+                      {isProcessing ? 'Deleting...' : 'Delete'}
+                    </Button>
                   )}
                 </TableCell>
               </TableRow>

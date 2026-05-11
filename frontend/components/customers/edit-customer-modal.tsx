@@ -2,19 +2,13 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
 import { api } from '@/lib/axios';
 
 type Customer = {
@@ -33,7 +27,6 @@ export function EditCustomerModal({ customer, trigger }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
@@ -44,14 +37,12 @@ export function EditCustomerModal({ customer, trigger }: Props) {
 
   const handleOpenChange = (state: boolean) => {
     setOpen(state);
-
     if (state) {
       setForm({
         name: customer.name,
         email: customer.email,
         phone: customer.phone ?? '',
       });
-
       setError(null);
     } else {
       setError(null);
@@ -72,13 +63,9 @@ export function EditCustomerModal({ customer, trigger }: Props) {
     try {
       setLoading(true);
       setError(null);
-
       await api.patch(`/customers/${customer.id}`, form);
-
-      queryClient.invalidateQueries({
-        queryKey: ['customers'],
-      });
-
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
       setOpen(false);
     } catch (err) {
       console.error(err);
@@ -87,16 +74,11 @@ export function EditCustomerModal({ customer, trigger }: Props) {
       setLoading(false);
     }
   };
-  
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="outline" size="sm">
-            Edit
-          </Button>
-        )}
+        {trigger ?? <Button variant="outline" size="sm">Edit</Button>}
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md w-[95vw] rounded-xl">
@@ -105,59 +87,35 @@ export function EditCustomerModal({ customer, trigger }: Props) {
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* NAME */}
           <div className="space-y-1">
             <Label>Name</Label>
             <Input
               value={form.name}
-              onChange={(e) =>
-                setForm((p) => ({
-                  ...p,
-                  name: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               disabled={loading}
             />
           </div>
 
-          {/* EMAIL */}
           <div className="space-y-1">
             <Label>Email</Label>
             <Input
               value={form.email}
-              onChange={(e) =>
-                setForm((p) => ({
-                  ...p,
-                  email: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               disabled={loading}
             />
           </div>
 
-          {/* PHONE */}
           <div className="space-y-1">
             <Label>Phone</Label>
             <Input
               value={form.phone}
-              onChange={(e) =>
-                setForm((p) => ({
-                  ...p,
-                  phone: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
               disabled={loading}
             />
           </div>
 
-          {/* ERROR */}
-          {error && (
-            <p className="text-sm text-red-500">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-sm text-red-500">{error}</p>}
 
-          {/* ACTIONS */}
           <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
@@ -167,7 +125,6 @@ export function EditCustomerModal({ customer, trigger }: Props) {
             >
               Cancel
             </Button>
-
             <Button
               className="flex-1"
               onClick={handleSubmit}

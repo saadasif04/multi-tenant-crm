@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -22,6 +23,10 @@ export class NotesService {
       where: {
         id: dto.customerId,
         organizationId: user.organizationId,
+        // MEMBER: can only add notes to their assigned customers
+        ...(user.role !== 'ADMIN' && {
+          assignedToId: user.id,
+        }),
       },
     });
 
@@ -61,10 +66,20 @@ export class NotesService {
     return this.prisma.note.findMany({
       where: {
         organizationId: user.organizationId,
+        // MEMBER: only their own notes
+        ...(user.role !== 'ADMIN' && {
+          createdById: user.id,
+        }),
       },
       include: {
         customer: true,
-        createdBy: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -72,30 +87,41 @@ export class NotesService {
     });
   }
 
-  // GET NOTES FOR ONE CUSTOMER
-  async findByCustomer(user: AuthUser, customerId: number) {
-    const customer = await this.prisma.customer.findFirst({
-      where: {
-        id: customerId,
-        organizationId: user.organizationId,
-      },
-    });
+// GET NOTES FOR ONE CUSTOMER
+async findByCustomer(user: AuthUser, customerId: number) {
+  const customer = await this.prisma.customer.findFirst({
+    where: {
+      id: customerId,
+      organizationId: user.organizationId,
+      // MEMBER: can only view notes on their assigned customers
+      ...(user.role !== 'ADMIN' && {
+        assignedToId: user.id,
+      }),
+    },
+  });
 
-    if (!customer) {
-      throw new NotFoundException('Customer not found');
-    }
-
-    return this.prisma.note.findMany({
-      where: {
-        customerId,
-        organizationId: user.organizationId,
-      },
-      include: {
-        createdBy: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  if (!customer) {
+    throw new NotFoundException('Customer not found');
   }
+
+  // ALL notes for this customer — no createdById filter
+  return this.prisma.note.findMany({
+    where: {
+      customerId,
+      organizationId: user.organizationId,
+    },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+}
 }

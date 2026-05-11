@@ -41,7 +41,7 @@ export function Header() {
             <div className="flex items-center gap-2">
               <Link href="/customers">
                 <Button variant="ghost" size="sm">
-                  Customers
+                  Dashboard
                 </Button>
               </Link>
 

@@ -2,32 +2,20 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
 import { api } from '@/lib/axios';
 
 export function CreateCustomerModal() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-  });
-
+  const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const queryClient = useQueryClient();
 
   const isValid =
@@ -45,13 +33,9 @@ export function CreateCustomerModal() {
     try {
       setLoading(true);
       setError(null);
-
       await api.post('/customers', form);
-
-      queryClient.invalidateQueries({
-        queryKey: ['customers'],
-      });
-
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
       setForm({ name: '', email: '', phone: '' });
       setOpen(false);
     } catch (err) {
@@ -64,7 +48,6 @@ export function CreateCustomerModal() {
 
   const handleOpenChange = (state: boolean) => {
     setOpen(state);
-
     if (!state) {
       setError(null);
       setLoading(false);
@@ -79,71 +62,45 @@ export function CreateCustomerModal() {
 
       <DialogContent className="sm:max-w-sm w-[92vw] p-4">
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-base">
-            Create Customer
-          </DialogTitle>
+          <DialogTitle className="text-base">Create Customer</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* NAME */}
           <div className="space-y-1">
             <Label className="text-xs">Name</Label>
             <Input
               placeholder="John Doe"
               value={form.name}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               disabled={loading}
               className="h-8 text-sm"
             />
           </div>
 
-          {/* EMAIL */}
           <div className="space-y-1">
             <Label className="text-xs">Email</Label>
             <Input
               placeholder="john@example.com"
               value={form.email}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  email: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               disabled={loading}
               className="h-8 text-sm"
             />
           </div>
 
-          {/* PHONE */}
           <div className="space-y-1">
             <Label className="text-xs">Phone</Label>
             <Input
               placeholder="+92..."
               value={form.phone}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  phone: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
               disabled={loading}
               className="h-8 text-sm"
             />
           </div>
 
-          {/* ERROR */}
-          {error && (
-            <p className="text-xs text-red-500">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-xs text-red-500">{error}</p>}
 
-          {/* ACTIONS */}
           <div className="flex gap-2 pt-2">
             <Button
               type="button"
@@ -155,7 +112,6 @@ export function CreateCustomerModal() {
             >
               Cancel
             </Button>
-
             <Button
               type="submit"
               size="sm"
